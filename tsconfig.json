@@ -1,0 +1,5 @@
+{
+  "//": "Root config for editor tooling only. Typechecking runs per-package via `bun run typecheck` (each package has its own tsconfig extending @repo/typescript-config).",
+  "files": [],
+  "include": []
+}

@@ -1,0 +1,5 @@
+@import "@repo/ui/globals.css";
+
+/* Scan the shared UI package so Tailwind v4 generates classes used by
+   components imported from @repo/ui. */
+@source "../../../../packages/ui/src";

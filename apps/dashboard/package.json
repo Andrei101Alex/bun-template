@@ -1,0 +1,35 @@
+{
+  "name": "@repo/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "generate-routes": "tsr generate",
+    "build": "tsr generate && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsr generate && tsc --noEmit"
+  },
+  "dependencies": {
+    "@elysiajs/eden": "^1.4.0",
+    "@repo/ui": "workspace:*",
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-router": "^1.135.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@repo/api": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@tailwindcss/vite": "^4.1.0",
+    "@tanstack/react-query-devtools": "^5.90.0",
+    "@tanstack/react-router-devtools": "^1.135.0",
+    "@tanstack/router-cli": "^1.135.0",
+    "@tanstack/router-plugin": "^1.135.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.0"
+  }
+}
