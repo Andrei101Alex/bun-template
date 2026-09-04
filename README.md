@@ -54,9 +54,9 @@ Options: `--display "My Shop"` for a custom brand, `--scope <scope>` to override
 
 | Area          | Tech                                                                  |
 | ------------- | --------------------------------------------------------------------- |
-| Package manager / runtime | [Bun](https://bun.sh) 1.3+ with workspaces                |
+| Package manager / runtime | [Bun](https://bun.sh) 1.4+ with workspaces                |
 | Dashboard     | [Vite](https://vite.dev) SPA · [TanStack Router](https://tanstack.com/router) (file-based) · [TanStack Query](https://tanstack.com/query) |
-| Website       | [Next.js](https://nextjs.org) 15 (App Router, RSC)                     |
+| Website       | [Next.js](https://nextjs.org) 16 (App Router, RSC)                     |
 | API           | [Elysia](https://elysiajs.com) on Bun                                  |
 | Shared UI     | [shadcn/ui](https://ui.shadcn.com) · [Tailwind CSS v4](https://tailwindcss.com) · [Storybook](https://storybook.js.org) |
 | Type-safe API client | [Eden Treaty](https://elysiajs.com/eden/overview.html)          |
@@ -146,7 +146,7 @@ This is what lets the same source file resolve correctly whether it's used from 
 
 ## Prerequisites
 
-- **Bun** ≥ 1.3 ([install](https://bun.sh/docs/installation))
+- **Bun** ≥ 1.4 ([install](https://bun.sh/docs/installation))
 - **Node** ≥ 20 (Next.js/tooling expect a Node runtime to be present)
 
 ## Getting started
