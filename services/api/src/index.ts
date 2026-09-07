@@ -1,34 +1,20 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
+import { greetingRoutes } from "./features/greeting/routes";
+import { healthRoutes } from "./features/health/routes";
+import { env } from "./shared/env";
+import { errorMapping } from "./shared/http";
 
-const PORT = Number(process.env.PORT ?? 3001);
-
+// Wiring only: middleware, then one `.use` per feature. Routes and rules live under
+// src/features/<name>/, so nothing but composition belongs in this file.
 export const app = new Elysia()
-  .use(
-    cors({
-      origin: [
-        "http://localhost:5173", // dashboard (Vite)
-        "http://localhost:3000", // website (Next.js)
-      ],
-    }),
-  )
+  .use(cors({ origin: env.corsOrigins }))
   .use(swagger({ path: "/docs" }))
-  .get("/", () => ({ message: "Acme API is running" }))
-  .get("/health", () => ({ status: "ok" as const, uptime: process.uptime() }))
-  .get(
-    "/greeting/:name",
-    ({ params: { name } }) => ({
-      greeting: `Hello, ${name}!`,
-      timestamp: new Date().toISOString(),
-    }),
-    {
-      params: t.Object({
-        name: t.String(),
-      }),
-    },
-  )
-  .listen(PORT);
+  .use(errorMapping)
+  .use(healthRoutes)
+  .use(greetingRoutes)
+  .listen(env.port);
 
 console.log(`🦊 Acme API running at http://localhost:${app.server?.port}`);
 
