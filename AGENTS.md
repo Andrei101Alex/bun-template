@@ -62,3 +62,17 @@ Read `features/greeting/` for the full pattern.
 - **Dashboard routes are file-based.** Adding a file under `apps/dashboard/src/routes/` regenerates `src/routeTree.gen.ts` automatically while `dev` runs; outside dev, run `bun run --filter @repo/dashboard generate-routes`. `routeTree.gen.ts` is generated (gitignored) — don't hand-edit it.
 - **Next.js consumes UI source directly** via `transpilePackages: ["@repo/ui"]` in `apps/website/next.config.ts`. New workspace deps that ship TS source must be added there too.
 - **Biome** is the only lint/format tool, configured once at the root `biome.json` (Tailwind at-rules are enabled via the CSS parser option). No ESLint/Prettier.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues, driven through the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label named after its role (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

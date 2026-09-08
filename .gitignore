@@ -32,3 +32,9 @@ yarn-error.log*
 # Misc
 .turbo/
 coverage/
+
+# Domain docs and skill config are shared in this repo, overriding any global ignore
+!CONTEXT.md
+!CONTEXT-MAP.md
+!**/docs/agents/
+!**/docs/adr/
