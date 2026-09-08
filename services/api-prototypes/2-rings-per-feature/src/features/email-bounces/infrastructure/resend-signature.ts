@@ -1,0 +1,1 @@
+// verifyResendSignature(rawBody, headers, secret)

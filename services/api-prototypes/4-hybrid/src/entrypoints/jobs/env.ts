@@ -1,0 +1,1 @@
+// typed env for the jobs process (DATABASE_URL, RESEND_API_KEY, STAFF_INBOX, NUDGE_CRON, OUTBOX_BATCH_SIZE)

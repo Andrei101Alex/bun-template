@@ -1,0 +1,1 @@
+// composition root: instantiates repositories, sender, clock, uow and partially applies every use case (submitFeedback = submitFeedbackUseCase({ feedbackRepo, outbox, uow })). The DI container, by hand

@@ -1,0 +1,1 @@
+// OutboxMessage + MessageKind union

@@ -1,0 +1,1 @@
+{ "_": "name @repo/api; scripts: dev/start for the api entrypoint, jobs for the jobs entrypoint, test = bun test, db:generate/db:migrate via drizzle-kit" }
