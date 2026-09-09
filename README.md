@@ -104,10 +104,10 @@ Three mechanisms make the pieces fit together:
 
 ### 2. Eden Treaty gives end-to-end types (no codegen)
 
-`services/api` exports its type at the bottom of `src/index.ts`:
+`services/api` exports its type from its api entry point, `src/entrypoints/api/app.ts`:
 
 ```ts
-export type App = typeof app;
+export type App = ReturnType<typeof buildApp>;
 ```
 
 Each frontend imports **only that type** and wraps it with Eden:
@@ -120,7 +120,7 @@ import type { App } from "@repo/api";
 export const api = treaty<App>(import.meta.env.VITE_API_URL ?? "http://localhost:3001");
 ```
 
-Now `api.greeting({ name }).get()` is fully typed against the real route definition. Add, rename, or change a route in the API and the frontends get type errors immediately — the contract is the source code itself, so there is nothing to regenerate.
+Now `api.health.get()` is fully typed against the real route definition. Add, rename, or change a route in the API and the frontends get type errors immediately — the contract is the source code itself, so there is nothing to regenerate.
 
 ### 3. One Tailwind theme, shared by both apps
 

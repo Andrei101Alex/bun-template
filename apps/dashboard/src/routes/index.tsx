@@ -6,10 +6,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
-import { Input } from "@repo/ui/components/input";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 
 import { api } from "@/lib/api";
 
@@ -18,12 +16,10 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const [name, setName] = useState("world");
-
   const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["greeting", name],
+    queryKey: ["health"],
     queryFn: async () => {
-      const { data, error } = await api.greeting({ name }).get();
+      const { data, error } = await api.health.get();
       if (error) throw error;
       return data;
     },
@@ -40,23 +36,22 @@ function HomePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Greeting from the API</CardTitle>
+          <CardTitle>API health</CardTitle>
           <CardDescription>
-            Type a name and fetch a type-safe response from the Elysia service.
+            A type-safe call to the Elysia service, checked against the route definition itself.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex gap-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter a name"
-            />
-            <Button onClick={() => refetch()} disabled={isFetching}>
-              {isFetching ? "Loading…" : "Refetch"}
-            </Button>
-          </div>
-          <p className="text-sm">{isLoading ? "Loading…" : (data?.greeting ?? "No data yet")}</p>
+          <p className="text-sm">
+            {isLoading
+              ? "Loading…"
+              : data
+                ? `${data.status} · up ${Math.round(data.uptime)}s`
+                : "No data yet"}
+          </p>
+          <Button onClick={() => refetch()} disabled={isFetching} className="self-start">
+            {isFetching ? "Loading…" : "Refetch"}
+          </Button>
         </CardContent>
       </Card>
     </main>
