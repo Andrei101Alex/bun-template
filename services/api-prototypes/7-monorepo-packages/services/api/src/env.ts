@@ -1,0 +1,1 @@
+// typed env for the api process (PORT, CORS_ORIGINS, BETTER_AUTH_SECRET, RESEND_WEBHOOK_SECRET)

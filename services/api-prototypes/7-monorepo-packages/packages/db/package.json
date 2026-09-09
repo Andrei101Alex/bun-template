@@ -1,0 +1,1 @@
+{ "_": "name @repo/db; exports ./src/index.ts; scripts db:generate/db:migrate" }

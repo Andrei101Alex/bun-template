@@ -1,0 +1,1 @@
+{ "_": "name @repo/jobs; deps @repo/inbox, @repo/outbox, @repo/observability; scripts start" }

@@ -1,0 +1,1 @@
+// earned split: postReply(feedbackId, authorId, body): SELECT feedback inline -> INSERT reply + enqueue('reply.deliver'); listRepliesFor(id); isUnanswered(feedback, replyCount, now) pure rule; nudgeUnanswered(now): the unanswered query inline + isUnanswered -> sendEmail(digest to STAFF_INBOX); replyEmail and nudgeDigestEmail templates

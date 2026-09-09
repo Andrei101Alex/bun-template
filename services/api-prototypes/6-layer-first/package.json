@@ -1,0 +1,1 @@
+{ "_": "name @repo/api; scripts: dev/start = src/index.ts, jobs = src/jobs.ts, test = bun test --isolate, db:generate/db:migrate via drizzle-kit" }

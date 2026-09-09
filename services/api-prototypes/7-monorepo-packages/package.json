@@ -1,0 +1,1 @@
+{ "_": "root: workspaces ['apps/*', 'packages/*', 'services/*']; test = bun run --filter '*' test, since a root bun test reads only the root bunfig and no package preload" }

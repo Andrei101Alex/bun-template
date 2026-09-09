@@ -1,0 +1,1 @@
+{ "_": "name @repo/inbox; deps @repo/db, @repo/outbox, @repo/email; scripts test = bun test --isolate" }

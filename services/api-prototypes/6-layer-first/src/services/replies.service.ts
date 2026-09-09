@@ -1,0 +1,1 @@
+// postReply(feedbackId, authorId, body): feedbackService.findById -> db.insert(repliesTable) + enqueue('reply.deliver'); listRepliesFor; isUnanswered(feedback, replyCount, now) pure rule; nudgeUnanswered(now): feedbackService.findUnanswered + isUnanswered -> emailService.send(digest); replyEmail + nudgeDigestEmail templates

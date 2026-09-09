@@ -1,0 +1,1 @@
+{ "_": "name @repo/api; deps @repo/inbox, @repo/auth, @repo/email, @repo/db, @repo/observability, elysia; scripts dev/start, test = bun test --isolate" }

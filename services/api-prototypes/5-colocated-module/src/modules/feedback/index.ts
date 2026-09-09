@@ -1,0 +1,1 @@
+// new Elysia(): POST /feedback (rateLimit) with t.Object body inline, trim/blank rule inline, withTransaction(db.insert(feedback) + enqueue('feedback.acknowledge')); GET /feedback (staffGuard) with the reply-count query inline. No service.ts: the module has not earned one

@@ -1,0 +1,1 @@
+// all('/auth/*', auth.handler)

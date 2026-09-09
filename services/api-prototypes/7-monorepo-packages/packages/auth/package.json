@@ -1,0 +1,1 @@
+{ "_": "name @repo/auth; deps @repo/db, better-auth, elysia (peer, for the guard plugin)" }
