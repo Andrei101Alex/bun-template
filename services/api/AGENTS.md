@@ -25,7 +25,7 @@ packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api entry point, `features/health/`, `plugins/error-mapping.ts`, `@repo/errors`, `@repo/db` and the test runner. The rest of this file is the rule those pieces arrive under.
+Built today: the api entry point, `features/health/`, `features/feedback/` (`routes` `model` `service` `repository`), `plugins/error-mapping.ts`, `@repo/errors`, `@repo/db` with the `feedback` table and the first migration, and the test runner. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -36,7 +36,7 @@ One row per kind of thing, naming its one legal home. A feature creates a file o
 | Route | `src/features/{feature}/` | `routes.ts` | Elysia plugin, guards, response shaping, declared refusal statuses. One to five lines per handler: destructure, call one service operation, return. |
 | Schema, exported type, message kind | `src/features/{feature}/` | `model.ts` | `t.Object` schemas, `defineMessage(...)` per outbox kind the feature enqueues. Imports nothing else of the feature. |
 | Rule and orchestration | `src/features/{feature}/` | `service.ts` | One exported function per operation, named as the product names it. Rules inline beside the orchestration. The only feature file that sends email or enqueues. |
-| Query | `src/features/{feature}/` | `repository.ts` | Every query on the feature's tables. Imports `db` and tables from `@repo/db`. No interface. |
+| Query | `src/features/{feature}/` | `repository.ts` | Every query on the feature's tables. Imports `db` and tables from `@repo/db`, operators from `drizzle-orm`. No interface. |
 | Email content | `src/features/{feature}/` | `emails.ts` | Pure. Builds an `EmailMessage`; imports only that type from `@repo/email`. |
 | Outbox handler, schedule | `src/features/{feature}/` | `jobs.ts` | Exports `handlers` and `schedules`, either omitted when absent. Thin like a route: one service call each. |
 | Routes-only feature | `src/features/{feature}/` | `routes.ts` alone | `health/`, `auth/`. Gains a `service.ts` the moment a rule or a second caller appears. |
@@ -82,7 +82,7 @@ A feature is a flat directory of up to six files, the names in the table, and no
 
 **Edge file** names `routes.ts` and `jobs.ts` together: the two places a feature reads the request, the message, or the clock.
 
-**The clock.** A rule that depends on time takes a required `now: Date` parameter (`nudgeUnanswered(now)`, `isUnanswered(feedback, replyCount, now)`). An edge file reads the clock, writing `new Date()` inline, and the schedule runner passes `run(now)`. A repository takes a computed cutoff. Row timestamps are Drizzle `defaultNow()` defaults. A forgotten `now` is a type error; a clock read in a `service` or `repository` file is a `check` failure.
+**The clock.** A rule that depends on time takes a required `now: Date` parameter (`nudgeUnanswered(now)`, `isUnanswered(feedback, replyCount, now)`). An edge file reads the clock, writing `new Date()` inline, and the schedule runner passes `run(now)`. A repository takes a computed cutoff. Row timestamps are Drizzle `defaultNow()` defaults. A forgotten `now` is a type error; a clock read in a `service` or `repository` file is a `check` failure. A test at those layers is an edge, so it may build the `now` it passes in.
 
 **Vendors.** A vendor is reached by importing its package: `import { sendEmail } from "@repo/email"`. Email and the clock are the whole list of things a test cannot run, so nothing else is passed in for a test's sake, nothing rides on Elysia's context, and no `service.ts` function receives the context.
 
@@ -113,7 +113,7 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 2. Inside a feature, the matrix above. The spine is `routes -> service -> repository -> @repo/db`.
 3. `plugins/` never imports `features/`, and is imported from `routes.ts` and `entrypoints/` only.
 4. `elysia` is imported from `routes.ts`, `model.ts`, `plugins/` and `entrypoints/` only.
-5. A `service` or `repository` file takes `now: Date`; the clock is read in an edge file.
+5. A `service` or `repository` file takes `now: Date`; the clock is read in an edge file or in a test.
 
 `scripts/check-imports.ts` enforces all five on every `bun run check`, judging the resolved path so every spelling of an import is caught, and printing the file, the import and the rule. A test file inherits its subject's layer, and may reach another feature's `service.ts` for a fixture.
 
