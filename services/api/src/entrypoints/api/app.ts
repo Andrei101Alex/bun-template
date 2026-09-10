@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
+import { authRoutes } from "../../features/auth/routes";
 import { feedbackRoutes } from "../../features/feedback/routes";
 import { healthRoutes } from "../../features/health/routes";
 import { errorBody, errorMapping } from "../../plugins/error-mapping";
@@ -26,6 +27,7 @@ export function buildApp() {
       // any route can answer these two, so they are declared here rather than in every routes.ts
       .guard({ as: "global", response: { 422: errorBody, 500: errorBody } })
       .use(healthRoutes)
+      .use(authRoutes)
       .use(feedbackRoutes)
   );
 }

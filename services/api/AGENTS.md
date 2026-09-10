@@ -18,6 +18,7 @@ services/api/
       jobs/  main.ts  env.ts
     features/
       health/    routes.ts
+      auth/      routes.ts
       feedback/  routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
     plugins/
       error-mapping.ts  error-reporting.ts  request-id.ts  request-logging.ts  staff-guard.ts
@@ -25,7 +26,7 @@ packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api entry point, `features/health/`, `features/feedback/` (`routes` `model` `service` `repository`), `plugins/` less `rate-limit` and `staff-guard`, `@repo/errors`, `@repo/observability`, `@repo/db` with the `feedback` table and the first migration, and the test runner. The rest of this file is the rule those pieces arrive under.
+Built today: the api entry point, `features/health/`, `features/auth/`, `features/feedback/` (`routes` `model` `service` `repository`), `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/db` with the `feedback` and auth tables and their migrations, and the test runner. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -98,10 +99,10 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 | `@repo/errors` | `DomainError`, `Kind`, the helper per kind, `isDomainError` | none | none |
 | `@repo/observability` | `logger`, `reportError` | `reportedErrors()`, `resetReportedErrors()` | `LOG_LEVEL`: a pino level or `silent` |
 | `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend` |
-| `@repo/auth` | the Better Auth instance, `isStaff(session)` | a staff-session helper | Better Auth secret and URL |
+| `@repo/auth` | `auth` (the Better Auth instance), `isStaff(session)`, `STAFF_ROLE` | `signUpUser()`, `signUpStaff()` | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` |
 | `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter` | `pendingMessages(kind?)` | polling constants are code |
 
-`@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo; `bun run --filter @repo/db generate` writes a migration and `migrate` applies one, so nothing migrates at boot. A repository types its executor as the exported `Database` or `Transaction`, which name no driver, so one query runs on PGlite and on Postgres alike. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`.
+`@repo/auth` runs Better Auth's `admin` plugin, whose `role` column is what `isStaff` reads, and its `twoFactor` plugin. Its tables belong to `@repo/db` like every other table: `bun run --filter @repo/auth generate-schema` writes `packages/db/src/schema/auth.ts` through the Better Auth CLI, and that file is generated output, never edited by hand. `@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo; `bun run --filter @repo/db generate` writes a migration and `migrate` applies one, so nothing migrates at boot. A repository types its executor as the exported `Database` or `Transaction`, which name no driver, so one query runs on PGlite and on Postgres alike. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`.
 
 ## Plugins
 
@@ -142,7 +143,7 @@ A failure is a *refusal* (a rule, a guard or a missing row says no), a *schema f
 
 ## Tests
 
-`X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, `reportedErrors()`. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own, and `@repo/db` carries none.
+`X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, `reportedErrors()`. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test that needs a signed-in caller takes one from `@repo/auth/testing`: `signUpUser()` and `signUpStaff()` sign a fresh user up through Better Auth's own API and hand back `{ userId, headers }`, so a route test passes `headers` to Treaty and no test writes an auth row of its own. Promotion goes through the adapter on `auth.$context` rather than `auth.api.setRole`, because `role` is not a sign-up input and `setRole` wants a caller who is already an admin: there is no public route to the first one. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own, and `@repo/db` carries none.
 
 The runner is `bun run test` from the root, which runs each workspace's `bun test --isolate`. A workspace with tests carries a `bunfig.toml` naming `tests/preload.ts` and a committed `.env.test` holding fakes only. The preload awaits `migrateTestDatabase()` and registers the global `beforeEach` that resets the doubles: `resetReportedErrors()`, `resetSentEmails()`, truncating `outbox`. A bare root `bun test` reads the root `bunfig.toml` instead, so it loads neither and is unsupported.
 

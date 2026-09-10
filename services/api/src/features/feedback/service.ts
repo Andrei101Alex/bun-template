@@ -1,9 +1,19 @@
-import type { FeedbackAccepted, SubmitFeedbackInput } from "./model";
-import { insertFeedback, markUndeliverable } from "./repository";
+import {
+  type FeedbackAccepted,
+  type FeedbackItem,
+  type SubmitFeedbackInput,
+  toFeedbackItem,
+} from "./model";
+import { insertFeedback, markUndeliverable, selectFeedback } from "./repository";
 
 export async function submitFeedback(input: SubmitFeedbackInput): Promise<FeedbackAccepted> {
   const { id } = await insertFeedback(input);
   return { id };
+}
+
+/** The whole inbox, newest first. `plugins/staff-guard.ts` is what keeps this staff-only. */
+export async function listFeedback(): Promise<FeedbackItem[]> {
+  return (await selectFeedback()).map(toFeedbackItem);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { db, feedback } from "@repo/db";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Feedback, SubmitFeedbackInput } from "./model";
 
 const columns = {
@@ -14,6 +14,10 @@ export async function insertFeedback(input: SubmitFeedbackInput): Promise<Feedba
   const [row] = await db.insert(feedback).values(input).returning(columns);
   // returning() widens to possibly-absent; a one-row insert either returns its row or throws
   return row as Feedback;
+}
+
+export function selectFeedback(): Promise<Feedback[]> {
+  return db.select(columns).from(feedback).orderBy(desc(feedback.createdAt));
 }
 
 /** Rows already marked keep their first bounce, so a repeat bounce reports nothing marked. */
