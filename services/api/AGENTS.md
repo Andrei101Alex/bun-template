@@ -9,7 +9,9 @@ Rules for `services/api/src/**` and the backend packages `@repo/{db,auth,email,j
 ```
 services/api/
   AGENTS.md  CLAUDE.md -> AGENTS.md
+  bunfig.toml  .env.test
   scripts/check-imports.ts
+  tests/preload.ts
   src/
     entrypoints/
       api/   main.ts  app.ts  env.ts
@@ -23,7 +25,7 @@ packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api entry point, `features/health/`, `plugins/error-mapping.ts`, `@repo/errors`. The rest of this file is the rule those pieces arrive under.
+Built today: the api entry point, `features/health/`, `plugins/error-mapping.ts`, `@repo/errors`, `@repo/db` and the test runner. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -92,14 +94,14 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 
 | Package | Exports from `"."` | `./testing` | Env |
 | --- | --- | --- | --- |
-| `@repo/db` | `db`, `withTransaction`, `migrate`, `checkConnection`, every table | `migrateTestDatabase()` | `DATABASE_URL`; a `pglite:` scheme picks PGlite, anything else the Postgres driver |
+| `@repo/db` | `db`, `withTransaction`, `migrate`, `checkConnection`, every table | `migrateTestDatabase()` | `DATABASE_URL`; a `pglite:` scheme picks PGlite (`pglite://memory`, `pglite://<dir>`), a `postgres:` or `postgresql:` one picks postgres.js, and any other scheme is refused at boot |
 | `@repo/errors` | `DomainError`, `Kind`, the helper per kind, `isDomainError` | none | none |
 | `@repo/observability` | `logger`, `reportError` | the reported-errors handle and its reset | log level |
 | `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend` |
 | `@repo/auth` | the Better Auth instance, `isStaff(session)` | a staff-session helper | Better Auth secret and URL |
 | `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter` | `pendingMessages(kind?)` | polling constants are code |
 
-`@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`.
+`@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo; `bun run --filter @repo/db generate` writes a migration and `migrate` applies one, so nothing migrates at boot. A repository types its executor as the exported `Database` or `Transaction`, which name no driver, so one query runs on PGlite and on Postgres alike. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`.
 
 ## Plugins
 
@@ -123,7 +125,9 @@ The kind-and-code envelope, `errorBody`, and the mapping of Elysia's `VALIDATION
 
 ## Tests
 
-Not built yet; this is the layout the runner arrives under. `X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, the reported-errors handle. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own.
+`X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, the reported-errors handle. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own, and `@repo/db` carries none.
+
+The runner is `bun run test` from the root, which runs each workspace's `bun test --isolate`. A workspace with tests carries a `bunfig.toml` naming `tests/preload.ts` and a committed `.env.test` holding fakes only. The preload awaits `migrateTestDatabase()` and registers the global `beforeEach` that resets the doubles. A bare root `bun test` reads the root `bunfig.toml` instead, so it loads neither and is unsupported.
 
 ## Vocabulary
 
