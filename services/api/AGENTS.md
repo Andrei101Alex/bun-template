@@ -20,13 +20,14 @@ services/api/
       health/    routes.ts
       auth/      routes.ts
       feedback/  routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
+      replies/   routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
     plugins/
       error-mapping.ts  error-reporting.ts  request-id.ts  request-logging.ts  staff-guard.ts
 packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/` (every file but `routes.ts`'s reply routes), `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs` less a cron runtime behind `startSchedules`, `@repo/db` with the `feedback`, `outbox` and auth tables and their migrations, and the test runner. The rest of this file is the rule those pieces arrive under.
+Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/`, `features/replies/`, `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs`, `@repo/db` with the `feedback`, `replies`, `outbox` and auth tables and their migrations, and the test runner. Left to build: `features/email-bounces/` and `plugins/rate-limit.ts`. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -81,13 +82,13 @@ A feature is a flat directory of up to six files, the names in the table, and no
 
 `repository` and `emails` belong to `service` alone. A cross-feature import runs from one `service.ts` to another and nothing else crosses that boundary, which is what earns a routes-only feature its first `service.ts` the moment it calls into a neighbour.
 
-**Edge file** names `routes.ts` and `jobs.ts` together: the two places a feature reads the request, the message, or the clock.
+**Edge file** names `routes.ts` and `jobs.ts` together: the two places a feature reads the request, the message, the clock, or a `process.env` value its entry point already validated. `replies/jobs.ts` reads `STAFF_DIGEST_EMAIL` that way, because a feature never imports an entry point and the value is deployment config rather than a rule.
 
-**The clock.** A rule that depends on time takes a required `now: Date` parameter (`nudgeUnanswered(now)`, `isUnanswered(feedback, replyCount, now)`). An edge file reads the clock, writing `new Date()` inline, and the schedule runner passes `run(now)`. A repository takes a computed cutoff. Row timestamps are Drizzle `defaultNow()` defaults. A forgotten `now` is a type error; a clock read in a `service` or `repository` file is a `check` failure. A test at those layers is an edge, so it may build the `now` it passes in.
+**The clock.** A rule that depends on time takes a required `now: Date` parameter (`nudgeUnanswered(recipient, now)`, `isUnanswered(feedback, replyCount, now)`). An edge file reads the clock, writing `new Date()` inline, and the schedule runner passes `run(now)`. A repository takes a computed cutoff: `new Date(now.getTime() - window)` is arithmetic rather than a read, so the check passes it and a bare `new Date()` is what fails. Row timestamps are Drizzle `defaultNow()` defaults. A forgotten `now` is a type error; a clock read in a `service` or `repository` file is a `check` failure. A test at those layers is an edge, so it may build the `now` it passes in.
 
 **Vendors.** A vendor is reached by importing its package: `import { sendEmail } from "@repo/email"`. Email and the clock are the whole list of things a test cannot run, so nothing else is passed in for a test's sake, nothing rides on Elysia's context, and no `service.ts` function receives the context.
 
-**Outbox handlers.** `jobs.ts` stays thin: `handlers = { [acknowledge.kind]: ({ feedbackId }) => sendAcknowledgement(feedbackId) }`. The service gains one operation per outbox kind, which loads the row, builds the message from `emails.ts` and sends it. A schedule is `{ name, cron, run: (now) => nudgeUnanswered(now) }`.
+**Outbox handlers.** `jobs.ts` stays thin: `handlers = { [acknowledge.kind]: ({ feedbackId }) => sendAcknowledgement(feedbackId) }`. The service gains one operation per outbox kind, which loads the row, builds the message from `emails.ts` and sends it. A schedule is `{ name, cron, run: (now) => nudgeUnanswered(digestRecipient(), now) }`.
 
 ## Packages
 
@@ -100,9 +101,9 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 | `@repo/observability` | `logger`, `reportError` | `reportedErrors()`, `resetReportedErrors()` | `LOG_LEVEL`: a pino level or `silent` |
 | `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend`, anything else refused at boot; `RESEND_API_KEY` and `EMAIL_FROM` required only when it is `resend` |
 | `@repo/auth` | `auth` (the Better Auth instance), `isStaff(session)`, `STAFF_ROLE` | `signUpUser()`, `signUpStaff()` | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` |
-| `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter`, the types `Message`, `JobHandler`, `Schedule` | `pendingMessages(kind?)` | polling constants are code |
+| `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter`, the types `Message`, `JobHandler`, `Schedule`, `StartedSchedules` | `pendingMessages(kind?)` | polling constants are code |
 
-`@repo/auth` runs Better Auth's `admin` plugin, whose `role` column is what `isStaff` reads, and its `twoFactor` plugin. Its tables belong to `@repo/db` like every other table: `bun run --filter @repo/auth generate-schema` writes `packages/db/src/schema/auth.ts` through the Better Auth CLI, and that file is generated output, never edited by hand. `@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo; `bun run --filter @repo/db generate` writes a migration and `migrate` applies one, so nothing migrates at boot. A repository types its executor as the exported `Database` or `Transaction`, which name no driver, so one query runs on PGlite and on Postgres alike. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`.
+`@repo/auth` runs Better Auth's `admin` plugin, whose `role` column is what `isStaff` reads, and its `twoFactor` plugin. Its tables belong to `@repo/db` like every other table: `bun run --filter @repo/auth generate-schema` writes `packages/db/src/schema/auth.ts` through the Better Auth CLI, and that file is generated output, never edited by hand. `@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo; `bun run --filter @repo/db generate` writes a migration and `migrate` applies one, so nothing migrates at boot. A repository types its executor as the exported `Database` or `Transaction`, which name no driver, so one query runs on PGlite and on Postgres alike. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`. Its schedules run on croner, whose constructor parses the pattern, so a malformed `cron` fails at boot rather than at a tick that never comes. `startSchedules` hands back a `stop()` over every job it started.
 
 ## Plugins
 

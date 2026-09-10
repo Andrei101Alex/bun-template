@@ -23,6 +23,7 @@
     "@repo/errors": "workspace:*",
     "@repo/observability": "workspace:*",
     "@sinclair/typebox": "^0.34.49",
+    "croner": "^10.0.1",
     "drizzle-orm": "^0.44.0"
   },
   "devDependencies": {

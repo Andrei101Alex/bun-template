@@ -98,9 +98,10 @@ for (const path of new Bun.Glob("**/*.ts").scanSync(SRC)) {
   const absolute = `${SRC}/${path}`;
   const source = await Bun.file(absolute).text();
 
-  // a test at these layers is an edge: it supplies the now its subject takes
+  // a test at these layers is an edge: it supplies the now its subject takes. `new Date(ms)` is
+  // arithmetic rather than a read, so a cutoff derived from `now` passes
   if (!from.test && (from.layer === "service" || from.layer === "repository")) {
-    const clock = source.match(/\bnew Date\(|\bDate\.now\(/)?.[0];
+    const clock = source.match(/\bnew Date\(\s*\)|\bDate\.now\(/)?.[0];
     if (clock)
       report(path, clock, "a rule takes now: Date from an edge file; only edges read the clock");
   }
