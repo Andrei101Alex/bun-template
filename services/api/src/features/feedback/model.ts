@@ -1,3 +1,4 @@
+import { defineMessage } from "@repo/jobs";
 import { t } from "elysia";
 
 export const submitFeedbackBody = t.Object({
@@ -42,3 +43,12 @@ export const toFeedbackItem = (row: Feedback): FeedbackItem => ({
   undeliverableAt: row.undeliverableAt?.toISOString() ?? null,
   createdAt: row.createdAt.toISOString(),
 });
+
+/**
+ * Enqueued in the same transaction as the submission. Only the id travels: the acknowledgement is
+ * built from the stored row when it is sent, so it cannot go out with a stale message in it.
+ */
+export const acknowledge = defineMessage(
+  "feedback.acknowledge",
+  t.Object({ feedbackId: t.String({ format: "uuid" }) }),
+);

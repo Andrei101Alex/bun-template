@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
 import { signUpStaff, signUpUser } from "@repo/auth/testing";
+import { pendingMessages } from "@repo/jobs/testing";
 import { type App, buildApp } from "../../entrypoints/api/app";
 
 const api = treaty<App>(buildApp());
@@ -15,6 +16,17 @@ describe("POST /feedback", () => {
     expect(error).toBeNull();
     expect(status).toBe(201);
     expect(data?.id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("enqueues one acknowledgement for the submission it stored", async () => {
+    const { data } = await api.feedback.post({
+      email: "customer@example.com",
+      message: "Acknowledge me.",
+    });
+
+    expect(await pendingMessages("feedback.acknowledge")).toEqual([
+      { kind: "feedback.acknowledge", payload: { feedbackId: data?.id } },
+    ]);
   });
 
   it("refuses a body that is not a submission", async () => {

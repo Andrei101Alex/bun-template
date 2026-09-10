@@ -1,0 +1,32 @@
+{
+  "name": "@repo/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing.ts",
+      "import": "./src/testing.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test --isolate",
+    "replay": "bun run scripts/replay.ts"
+  },
+  "dependencies": {
+    "@repo/db": "workspace:*",
+    "@repo/errors": "workspace:*",
+    "@repo/observability": "workspace:*",
+    "@sinclair/typebox": "^0.34.49",
+    "drizzle-orm": "^0.44.0"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/bun": "^1.4.0"
+  }
+}

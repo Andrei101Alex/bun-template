@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "bun run --watch src/entrypoints/api/main.ts",
     "start": "bun run src/entrypoints/api/main.ts",
+    "jobs": "bun run src/entrypoints/jobs/main.ts",
     "typecheck": "tsc --noEmit",
     "check": "bun scripts/check-imports.ts",
     "test": "bun test --isolate"
@@ -25,6 +26,7 @@
     "@repo/db": "workspace:*",
     "@repo/email": "workspace:*",
     "@repo/errors": "workspace:*",
+    "@repo/jobs": "workspace:*",
     "@repo/observability": "workspace:*",
     "@sinclair/typebox": "^0.34.49",
     "drizzle-orm": "^0.44.0",
