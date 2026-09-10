@@ -10,13 +10,14 @@ Run from the repo root unless noted. This is a **Bun workspaces** monorepo — a
 | `bun run dev` | Run api + website + dashboard in parallel. |
 | `bun run build` | Build every workspace. |
 | `bun run typecheck` | Per-package `tsc --noEmit` across all workspaces. |
+| `bun run test` | Runs each workspace's own `test` (`bun test --isolate`). PGlite in memory backs the database, so a test run needs no Postgres. |
 | `bun run check` / `check:fix` | Biome lint + format check / auto-fix. `check` then runs each workspace's own `check` (the api's import rules). |
 | `bun run --filter @repo/<pkg> <script>` | Run one workspace's script (e.g. `--filter @repo/api dev`). |
 | `bun run --filter @repo/ui storybook` | Storybook on :6006 (not part of `bun run dev`). |
 
 Ports: website `3000`, api `3001` (+ `/docs`), dashboard `5173`, storybook `6006`.
 
-Before committing, run `bun run typecheck` and `bun run check`.
+Before committing, run `bun run typecheck`, `bun run check` and `bun run test`.
 
 ## Architecture
 
@@ -44,6 +45,7 @@ Before creating, moving or renaming a file under `services/api/` or in `packages
 - **Typecheck is per-package, not `tsc -b`.** Each package has its own `tsconfig.json` extending a `@repo/typescript-config` preset; there is no composite solution. App/library presets set `declaration: false` on purpose (packages ship source, not `.d.ts`) — re-enabling it resurfaces TS2742/TS4023 portability errors.
 - **Dashboard routes are file-based.** Adding a file under `apps/dashboard/src/routes/` regenerates `src/routeTree.gen.ts` automatically while `dev` runs; outside dev, run `bun run --filter @repo/dashboard generate-routes`. `routeTree.gen.ts` is generated (gitignored) — don't hand-edit it.
 - **Next.js consumes UI source directly** via `transpilePackages: ["@repo/ui"]` in `apps/website/next.config.ts`. New workspace deps that ship TS source must be added there too.
+- **A bare root `bun test` is unsupported.** It reads the root `bunfig.toml` only, so it loads no preload and no `.env.test`. The first test to touch the database then fails on a missing `DATABASE_URL`. Run `bun run test`, or `bun run --filter @repo/api test` for one workspace.
 - **Biome** is the only lint/format tool, configured once at the root `biome.json` (Tailwind at-rules are enabled via the CSS parser option). No ESLint/Prettier.
 
 ## Agent skills

@@ -12,10 +12,15 @@ storybook-static/
 # Generated route tree
 **/routeTree.gen.ts
 
+# Local PGlite dev database
+.data/
+
 # Env
 .env
 .env.*
 !.env.example
+# committed: fakes only, so a test run needs no local setup
+!.env.test
 
 # Logs
 *.log
