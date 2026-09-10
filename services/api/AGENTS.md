@@ -23,12 +23,13 @@ services/api/
       replies/   routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
       email-bounces/  routes.ts  service.ts
     plugins/
-      error-mapping.ts  error-reporting.ts  request-id.ts  request-logging.ts  staff-guard.ts
+      error-mapping.ts  error-reporting.ts  rate-limit.ts  request-id.ts  request-logging.ts
+      staff-guard.ts
 packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/`, `features/replies/`, `features/email-bounces/`, `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs`, `@repo/db` with the `feedback`, `replies`, `outbox` and auth tables and their migrations, and the test runner. Left to build: `plugins/rate-limit.ts`. The rest of this file is the rule those pieces arrive under.
+Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/`, `features/replies/`, `features/email-bounces/`, `plugins/`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs`, `@repo/db` with the `feedback`, `replies`, `outbox` and auth tables and their migrations, and the test runner, `plugins/rate-limit.ts` included. The rest of this file is the rule those pieces hold to.
 
 ## Placement table
 
@@ -109,6 +110,8 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 ## Plugins
 
 `src/plugins/` holds only code that runs around a request: hooks, guards, derived values. One Elysia instance per file, `name` equal to the filename. `request-id` derives a child logger; `request-logging` writes a line per request; `error-reporting` sends faults to `reportError`; `error-mapping` owns the status table, the envelope writer and `errorBody`; `rate-limit` counts per process and sets `Retry-After`; `staff-guard` applies `isStaff`. Health, the auth mount and the docs are features or entry-point wiring, not plugins.
+
+`rate-limit` holds a fixed window per client address in a `Map` in the process, its limits constants in the file, and is applied from `features/feedback/routes.ts` to the public `POST /feedback`. Per process means N processes allow N times the limit, and a deploy forgets every window. A count shared across processes would be a table in `@repo/db` incremented per request, which is a new table and a query on the hot path: no route has earned it yet. The client address is the first hop of `x-forwarded-for`, falling back to the socket address, so the api must sit behind a proxy that overwrites that header.
 
 ## Import direction
 
