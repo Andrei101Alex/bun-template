@@ -2,6 +2,7 @@ import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
 import { authRoutes } from "../../features/auth/routes";
+import { emailBounceRoutes } from "../../features/email-bounces/routes";
 import { feedbackRoutes } from "../../features/feedback/routes";
 import { healthRoutes } from "../../features/health/routes";
 import { replyRoutes } from "../../features/replies/routes";
@@ -31,6 +32,7 @@ export function buildApp() {
       .use(authRoutes)
       .use(feedbackRoutes)
       .use(replyRoutes)
+      .use(emailBounceRoutes)
   );
 }
 

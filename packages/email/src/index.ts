@@ -13,6 +13,12 @@ export { verifyWebhookSignature, type WebhookHeaders } from "./webhook";
  */
 export const sendEmail = providerFor(env);
 
+/**
+ * What the provider signs its webhooks with, for the route that verifies one. Lives here rather
+ * than in the api's own env because the signing scheme is this package's business.
+ */
+export const webhookSecret = env.webhookSecret;
+
 function providerFor(config: EmailEnv): (message: EmailMessage) => Promise<void> {
   if (config.provider === "memory") return sendViaMemory;
   return (message) => sendViaResend(message, config);
