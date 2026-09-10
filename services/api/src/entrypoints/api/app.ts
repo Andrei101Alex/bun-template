@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
+import { feedbackRoutes } from "../../features/feedback/routes";
 import { healthRoutes } from "../../features/health/routes";
 import { errorMapping } from "../../plugins/error-mapping";
 import { env } from "./env";
@@ -14,7 +15,8 @@ export function buildApp() {
     .use(cors({ origin: env.corsOrigins }))
     .use(swagger({ path: "/docs" }))
     .use(errorMapping)
-    .use(healthRoutes);
+    .use(healthRoutes)
+    .use(feedbackRoutes);
 }
 
 /** The contract the frontends type Eden Treaty with. */
