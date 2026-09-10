@@ -21,7 +21,7 @@ Before committing, run `bun run typecheck`, `bun run check` and `bun run test`.
 
 ## Architecture
 
-Two frontends (`apps/dashboard` Vite SPA, `apps/website` Next.js) and one backend (`services/api` Elysia) share a UI kit (`packages/ui`) and tsconfig presets (`packages/typescript-config`). All internal packages are `@repo/*`, depended on via `workspace:*`, so **imports resolve to local source with no build/publish step between packages** — a change in one package is live for its consumers.
+Two frontends (`apps/dashboard` Vite SPA, `apps/website` Next.js) and one backend (`services/api` Elysia) share a UI kit (`packages/ui`) and tsconfig presets (`packages/typescript-config`). The backend runs two processes over one workspace, `src/entrypoints/api` and `src/entrypoints/jobs`, and its infrastructure is six packages: `@repo/db` (Drizzle schema, migrations, connection), `@repo/auth` (Better Auth), `@repo/email` (`sendEmail`, bounce signatures), `@repo/jobs` (transactional outbox, schedules), `@repo/observability` (`logger`, `reportError`) and `@repo/errors` (`DomainError`). All internal packages are `@repo/*`, depended on via `workspace:*`, so **imports resolve to local source with no build/publish step between packages** — a change in one package is live for its consumers.
 
 Four cross-cutting mechanisms are the things to understand before editing:
 
@@ -46,6 +46,8 @@ Before creating, moving or renaming a file under `services/api/` or in `packages
 - **Dashboard routes are file-based.** Adding a file under `apps/dashboard/src/routes/` regenerates `src/routeTree.gen.ts` automatically while `dev` runs; outside dev, run `bun run --filter @repo/dashboard generate-routes`. `routeTree.gen.ts` is generated (gitignored) — don't hand-edit it.
 - **Next.js consumes UI source directly** via `transpilePackages: ["@repo/ui"]` in `apps/website/next.config.ts`. New workspace deps that ship TS source must be added there too.
 - **A bare root `bun test` is unsupported.** It reads the root `bunfig.toml` only, so it loads no preload and no `.env.test`. The first test to touch the database then fails on a missing `DATABASE_URL`. Run `bun run test`, or `bun run --filter @repo/api test` for one workspace.
+- **Migrations never run at boot.** `bun run --filter @repo/db generate` writes one from the schema, `bun run --filter @repo/db migrate` applies it. A test run migrates PGlite in memory from `tests/preload.ts`.
+- **Env is per workspace.** `services/api`, `packages/db`, `packages/jobs` and both apps each carry a committed `.env.example` to copy to `.env`. Every default is a working local one and `DATABASE_URL` points at embedded PGlite, so no Postgres is needed. `typecheck`, `check` and `test` need no `.env` at all.
 - **Biome** is the only lint/format tool, configured once at the root `biome.json` (Tailwind at-rules are enabled via the CSS parser option). No ESLint/Prettier.
 
 ## Agent skills

@@ -9,7 +9,7 @@ Rules for `services/api/src/**` and the backend packages `@repo/{db,auth,email,j
 ```
 services/api/
   AGENTS.md  CLAUDE.md -> AGENTS.md
-  bunfig.toml  .env.test
+  bunfig.toml  .env.test  .env.example
   scripts/check-imports.ts
   tests/preload.ts
   src/
@@ -28,8 +28,6 @@ services/api/
 packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
-
-Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/`, `features/replies/`, `features/email-bounces/`, `plugins/`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs`, `@repo/db` with the `feedback`, `replies`, `outbox` and auth tables and their migrations, and the test runner, `plugins/rate-limit.ts` included. The rest of this file is the rule those pieces hold to.
 
 ## Placement table
 
@@ -58,6 +56,7 @@ One row per kind of thing, naming its one legal home. A feature creates a file o
 | Flow test | `services/api/tests/` | `{flow}.test.ts` | Only for a test with no single subject. |
 | Test preload | `services/api/tests/`, `packages/{pkg}/tests/` | `preload.ts` | Named by the workspace's `bunfig.toml`. Awaits the migration, registers a global `beforeEach` resetting the doubles. Sets no env. |
 | Test env | each workspace with tests | `.env.test` | Committed, fakes only. |
+| Env example | each workspace that runs a process or a script | `.env.example` | Committed. Every variable that workspace reads, its own and its packages', with a working local default. A PGlite path is relative to the workspace, so all of them name the same repo-root `.data`. |
 | Import check | `services/api/scripts/` | `check-imports.ts` | The workspace `check`, chained from the root `check` after Biome. |
 | ADR | `docs/adr/` | `000N-slug.md` | One per hard-to-reverse decision. |
 
@@ -150,7 +149,7 @@ A failure is a *refusal* (a rule, a guard or a missing row says no), a *schema f
 
 `X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, `reportedErrors()`. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test that needs a signed-in caller takes one from `@repo/auth/testing`: `signUpUser()` and `signUpStaff()` sign a fresh user up through Better Auth's own API and hand back `{ userId, headers }`, so a route test passes `headers` to Treaty and no test writes an auth row of its own. Promotion goes through the adapter on `auth.$context` rather than `auth.api.setRole`, because `role` is not a sign-up input and `setRole` wants a caller who is already an admin: there is no public route to the first one. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own, and `@repo/db` carries none.
 
-The runner is `bun run test` from the root, which runs each workspace's `bun test --isolate`. A workspace with tests carries a committed `.env.test` holding fakes only, and a `bunfig.toml` naming `tests/preload.ts` when its tests need the database or a reset hook: `@repo/email`'s are pure and carry neither. The preload awaits `migrateTestDatabase()` and registers the global `beforeEach` that resets the doubles: `resetReportedErrors()`, `resetSentEmails()`, truncating `outbox`. A bare root `bun test` reads the root `bunfig.toml` instead, so it loads neither and is unsupported.
+The runner is `bun run test` from the root, which runs each workspace's `bun test --isolate`. A workspace with tests carries a committed `.env.test` holding fakes only, and a `bunfig.toml` naming `tests/preload.ts` when its tests need the database or a reset hook: `@repo/email`'s touch neither, so it has the `.env.test` and no preload. The preload awaits `migrateTestDatabase()` and registers the global `beforeEach` that resets the doubles: `resetReportedErrors()`, `resetSentEmails()`, truncating `outbox`. A bare root `bun test` reads the root `bunfig.toml` instead, so it loads neither and is unsupported.
 
 ## Vocabulary
 
