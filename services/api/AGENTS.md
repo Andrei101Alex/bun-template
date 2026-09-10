@@ -21,13 +21,14 @@ services/api/
       auth/      routes.ts
       feedback/  routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
       replies/   routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
+      email-bounces/  routes.ts  service.ts
     plugins/
       error-mapping.ts  error-reporting.ts  request-id.ts  request-logging.ts  staff-guard.ts
 packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/`, `features/replies/`, `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs`, `@repo/db` with the `feedback`, `replies`, `outbox` and auth tables and their migrations, and the test runner. Left to build: `features/email-bounces/` and `plugins/rate-limit.ts`. The rest of this file is the rule those pieces arrive under.
+Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/`, `features/replies/`, `features/email-bounces/`, `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs`, `@repo/db` with the `feedback`, `replies`, `outbox` and auth tables and their migrations, and the test runner. Left to build: `plugins/rate-limit.ts`. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -99,7 +100,7 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 | `@repo/db` | `db`, `withTransaction`, `migrate`, `checkConnection`, every table | `migrateTestDatabase()` | `DATABASE_URL`; a `pglite:` scheme picks PGlite (`pglite://memory`, `pglite://<dir>`), a `postgres:` or `postgresql:` one picks postgres.js, and any other scheme is refused at boot |
 | `@repo/errors` | `DomainError`, `Kind`, the helper per kind, `isDomainError` | none | none |
 | `@repo/observability` | `logger`, `reportError` | `reportedErrors()`, `resetReportedErrors()` | `LOG_LEVEL`: a pino level or `silent` |
-| `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend`, anything else refused at boot; `RESEND_API_KEY` and `EMAIL_FROM` required only when it is `resend` |
+| `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature`, `webhookSecret` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend`, anything else refused at boot; `RESEND_API_KEY` and `EMAIL_FROM` required only when it is `resend`; `EMAIL_WEBHOOK_SECRET` required whichever provider sends, since the bounce webhook is mounted either way |
 | `@repo/auth` | `auth` (the Better Auth instance), `isStaff(session)`, `STAFF_ROLE` | `signUpUser()`, `signUpStaff()` | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` |
 | `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter`, the types `Message`, `JobHandler`, `Schedule`, `StartedSchedules` | `pendingMessages(kind?)` | polling constants are code |
 

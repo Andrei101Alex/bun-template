@@ -1,7 +1,13 @@
-/** Which provider `sendEmail` is, with what the real one needs to reach the vendor. */
-export type EmailEnv =
+/**
+ * Which provider `sendEmail` is, with what the real one needs to reach the vendor, and the
+ * secret the provider signs its webhooks with. The secret is read whichever provider is sending:
+ * the bounce webhook is mounted either way, and a missing secret would leave it refusing every
+ * event as forged.
+ */
+export type EmailEnv = { webhookSecret: string } & (
   | { provider: "memory" }
-  | { provider: "resend"; apiKey: string; from: string };
+  | { provider: "resend"; apiKey: string; from: string }
+);
 
 /**
  * Reads the provider out of an environment, hand-rolled rather than schema-parsed so every
@@ -9,11 +15,15 @@ export type EmailEnv =
  * is the one sending, which is what lets a dev run and a test run carry none.
  */
 export function emailEnv(source: Record<string, string | undefined>): EmailEnv {
+  const webhookSecret = source.EMAIL_WEBHOOK_SECRET;
+  if (!webhookSecret) throw new Error("EMAIL_WEBHOOK_SECRET: required");
+
   const provider = source.EMAIL_PROVIDER;
-  if (provider === "memory") return { provider };
+  if (provider === "memory") return { provider, webhookSecret };
   if (provider === "resend") {
     return {
       provider,
+      webhookSecret,
       apiKey: required(source, "RESEND_API_KEY"),
       from: required(source, "EMAIL_FROM"),
     };
