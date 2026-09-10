@@ -22,19 +22,25 @@ const MAY_IMPORT: Record<FeatureLayer, readonly FeatureLayer[]> = {
   model: [],
 };
 
-type Site = { layer: Layer; feature?: string; test: boolean };
+type Site = { layer: Layer; feature?: string; name: string; test: boolean };
 
 /** A file's place in the rules. Path only: `service/nudge.ts` and `service.test.ts` are `service`. */
 function siteOf(path: string): Site {
   const test = path.endsWith(".test.ts");
-  const [first, second, third] = path.split("/");
-  if (first === "entrypoints") return { layer: "entrypoint", test };
-  if (first === "plugins") return { layer: "plugin", test };
+  const segments = path.split("/");
+  const [first, second, third] = segments;
+  const name = (segments.at(-1) ?? "").replace(/(\.test)?\.ts$/, "");
+  if (first === "entrypoints") return { layer: "entrypoint", name, test };
+  if (first === "plugins") return { layer: "plugin", name, test };
   if (first === "features" && second && third) {
-    const name = third.replace(/(\.test)?\.ts$/, "");
-    return { layer: FEATURE_LAYERS.find((l) => l === name) ?? "other", feature: second, test };
+    return {
+      layer: FEATURE_LAYERS.find((l) => l === name) ?? "other",
+      feature: second,
+      name,
+      test,
+    };
   }
-  return { layer: "other", test };
+  return { layer: "other", name, test };
 }
 
 const isFeatureLayer = (layer: Layer): layer is FeatureLayer =>
@@ -54,7 +60,11 @@ function judge(from: Site, to: Site | null, specifier: string): string | undefin
   }
   if (from.layer === "plugin") {
     if (to.feature) return "plugins/ never imports features/";
-    if (to.layer === "plugin") return "plugins/ imports packages and elysia";
+    if (to.layer === "plugin") {
+      // a plugin's own test is a plugin file, and a test imports its subject
+      if (from.test && from.name === to.name) return;
+      return "plugins/ imports packages and elysia";
+    }
   }
   if (to.layer === "plugin" && from.layer !== "routes") {
     return "plugins/ is imported from routes.ts and entrypoints/ only";
