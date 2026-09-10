@@ -115,13 +115,30 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 4. `elysia` is imported from `routes.ts`, `model.ts`, `plugins/` and `entrypoints/` only.
 5. A `service` or `repository` file takes `now: Date`; the clock is read in an edge file or in a test.
 
-`scripts/check-imports.ts` enforces all five on every `bun run check`, judging the resolved path so every spelling of an import is caught, and printing the file, the import and the rule. A test file inherits its subject's layer, and may reach another feature's `service.ts` for a fixture.
+`scripts/check-imports.ts` enforces all five on every `bun run check`, judging the resolved path so every spelling of an import is caught, and printing the file, the import and the rule. A test file inherits its subject's layer, and may import its subject and reach another feature's `service.ts` for a fixture.
 
 ## Failures
 
-A service refuses by throwing a `DomainError` from `@repo/errors` and names no status; `plugins/error-mapping.ts` maps the code to a status once, which is what keeps route bodies short. When the frontend has to branch and render something specific, say a quota refusal carrying the limit, the service returns a discriminated union instead and `routes.ts` maps it with `status()`, so Eden Treaty carries the refusal into the client's types.
+A failure is a *refusal* (a rule, a guard or a missing row says no), a *schema failure* (Elysia's `t.Object` said no), or a *fault* (anything else). All three leave the api as one envelope, `{ code, message, details? }`, written by `plugins/error-mapping.ts`; the request id is in the `x-request-id` header, never in the body.
 
-The kind-and-code envelope, `errorBody`, and the mapping of Elysia's `VALIDATION`, `NOT_FOUND` and `PARSE` replace this paragraph when `@repo/errors` reaches its final form.
+| Kind | Status | Thrown by |
+| --- | --- | --- |
+| `invalid` | 422 | a rule a schema cannot express (blank after trim) |
+| `unauthenticated` | 401 | `staff-guard` with no session; `email-bounces` on a bad signature |
+| `forbidden` | 403 | `staff-guard` with a non-staff session |
+| `not_found` | 404 | a service asked for a row that is not there |
+| `conflict` | 409 | a rule refusing the current state |
+| `rate_limited` | 429 | `rate-limit`, which sets `Retry-After` first |
+| `unavailable` | 503 | `health` when the database probe fails |
+
+- A service refuses by throwing `DomainError` from `@repo/errors` through the helper for its kind: `throw conflict("address_undeliverable", "This address bounced")`. `kind` picks the status; `code` is the feature's own word and what a client branches on; `message` is for a developer. A service never names a status.
+- A refusal that carries a value the client renders is a discriminated union from the service, mapped in `routes.ts` with `status(409, { code, message, details })` so Treaty carries the literal type. A code and a message alone is always a throw. Example: `features/replies/`.
+- Guards refuse the same way: `plugins/staff-guard.ts`, `plugins/rate-limit.ts`, the signature check in `features/email-bounces/routes.ts`.
+- A schema failure maps to 422 `{ code: "validation", message, details: [{ path, message }] }`; the input is never echoed. Elysia's `NOT_FOUND` and `PARSE` map to `not_found` 404 and `unparseable_body` 400.
+- A fault is 500 `{ code: "internal", message: "Internal server error" }`, reported through `reportError` with the request id. Refusals and schema failures are logged at warn and never reported.
+- `routes.ts` declares each refusal it can answer in `response`, with `errorBody` from `plugins/error-mapping.ts`: `response: { 201: feedback, 404: errorBody, 409: errorBody }`. 422 and 500 are declared once in `buildApp()`.
+- Under the outbox consumer a `DomainError` is permanent: the row is dead-lettered at once with kind, code and message; anything else retries. A vendor package throws `DomainError` for a deterministic rejection and lets a 5xx or a network error propagate.
+- The bounce webhook answers 401 to a bad signature, 200 to an event it does not handle or an address it does not know, 500 when recording fails so the provider retries.
 
 ## Tests
 

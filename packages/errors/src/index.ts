@@ -1,32 +1,52 @@
-export type ErrorCode = "invalid_input" | "not_found" | "forbidden" | "conflict" | "unavailable";
-
-const statuses: Record<ErrorCode, number> = {
-  invalid_input: 400,
-  not_found: 404,
-  forbidden: 403,
-  conflict: 409,
-  unavailable: 503,
-};
+/**
+ * The closed set a refusal picks its status from. A service names a kind and never a status;
+ * `plugins/error-mapping.ts` owns the one table that turns a kind into one.
+ */
+export type Kind =
+  | "invalid"
+  | "unauthenticated"
+  | "forbidden"
+  | "not_found"
+  | "conflict"
+  | "rate_limited"
+  | "unavailable";
 
 /**
- * A refusal: a rule, a guard or a missing row saying no. A service throws one and says nothing
- * about HTTP; the api maps the code to a status once, in `plugins/error-mapping.ts`.
+ * A refusal: a rule, a guard or a missing row saying no. `kind` picks the status, `code` is the
+ * feature's own word and what a client branches on, `message` is developer English, and `details`
+ * carries whatever the client renders alongside it.
  */
 export class DomainError extends Error {
-  readonly status: number;
-
   constructor(
-    readonly code: ErrorCode,
+    readonly kind: Kind,
+    readonly code: string,
     message: string,
+    readonly details?: unknown,
   ) {
     super(message);
     this.name = "DomainError";
-    this.status = statuses[code];
   }
 }
 
-export const invalidInput = (message: string) => new DomainError("invalid_input", message);
-export const notFound = (message: string) => new DomainError("not_found", message);
-export const forbidden = (message: string) => new DomainError("forbidden", message);
-export const conflict = (message: string) => new DomainError("conflict", message);
-export const unavailable = (message: string) => new DomainError("unavailable", message);
+const refusal =
+  (kind: Kind) =>
+  (code: string, message: string, details?: unknown): DomainError =>
+    new DomainError(kind, code, message, details);
+
+/** 422: a rule a schema cannot express. */
+export const invalid = refusal("invalid");
+/** 401: no session, or a signature that does not check out. */
+export const unauthenticated = refusal("unauthenticated");
+/** 403: a session that is not allowed this. */
+export const forbidden = refusal("forbidden");
+/** 404: a row that is not there. */
+export const notFound = refusal("not_found");
+/** 409: a rule refusing the current state. */
+export const conflict = refusal("conflict");
+/** 429: too many requests; the caller sets `Retry-After` first. */
+export const rateLimited = refusal("rate_limited");
+/** 503: a dependency is down. */
+export const unavailable = refusal("unavailable");
+
+/** True for a refusal, whatever threw it: the outbox reads this to dead-letter rather than retry. */
+export const isDomainError = (error: unknown): error is DomainError => error instanceof DomainError;
