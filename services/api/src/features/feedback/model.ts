@@ -20,3 +20,25 @@ export type Feedback = {
   undeliverableAt: Date | null;
   createdAt: Date;
 };
+
+/** One inbox row as staff reads it: timestamps leave as ISO strings, which is what JSON carries. */
+export const feedbackItem = t.Object({
+  id: t.String({ format: "uuid" }),
+  email: t.String(),
+  message: t.String(),
+  undeliverableAt: t.Nullable(t.String({ format: "date-time" })),
+  createdAt: t.String({ format: "date-time" }),
+});
+
+export const feedbackList = t.Array(feedbackItem);
+
+export type FeedbackItem = typeof feedbackItem.static;
+
+/** The one place a stored row becomes the wire shape. */
+export const toFeedbackItem = (row: Feedback): FeedbackItem => ({
+  id: row.id,
+  email: row.email,
+  message: row.message,
+  undeliverableAt: row.undeliverableAt?.toISOString() ?? null,
+  createdAt: row.createdAt.toISOString(),
+});

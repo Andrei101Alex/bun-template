@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { treaty } from "@elysiajs/eden";
+import { signUpStaff, signUpUser } from "@repo/auth/testing";
 import { type App, buildApp } from "../../entrypoints/api/app";
 
 const api = treaty<App>(buildApp());
@@ -20,5 +21,33 @@ describe("POST /feedback", () => {
     const { error } = await api.feedback.post({ email: "not-an-address", message: "" });
 
     expect(error?.status).toBe(422);
+  });
+});
+
+describe("GET /feedback", () => {
+  it("refuses an anonymous caller", async () => {
+    const { error } = await api.feedback.get();
+
+    expect(error?.status).toBe(401);
+    expect(error?.value).toMatchObject({ code: "no_session" });
+  });
+
+  it("refuses a signed-in caller who is not staff", async () => {
+    const { headers } = await signUpUser();
+
+    const { error } = await api.feedback.get({ headers });
+
+    expect(error?.status).toBe(403);
+    expect(error?.value).toMatchObject({ code: "not_staff" });
+  });
+
+  it("lists the inbox for staff", async () => {
+    await api.feedback.post({ email: "customer@example.com", message: "Listed." });
+    const { headers } = await signUpStaff();
+
+    const { data, error } = await api.feedback.get({ headers });
+
+    expect(error).toBeNull();
+    expect(data?.map((item) => item.message)).toContain("Listed.");
   });
 });
