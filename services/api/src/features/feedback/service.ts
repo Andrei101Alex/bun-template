@@ -5,6 +5,7 @@ import { enqueue } from "@repo/jobs";
 import { acknowledgement } from "./emails";
 import {
   acknowledge,
+  type Feedback,
   type FeedbackAccepted,
   type FeedbackItem,
   type SubmitFeedbackInput,
@@ -38,6 +39,11 @@ export async function sendAcknowledgement(feedbackId: string): Promise<void> {
   const row = await selectFeedbackById(feedbackId);
   if (!row) throw notFound("feedback_not_found", `No feedback ${feedbackId} to acknowledge`);
   await sendEmail(acknowledgement(row));
+}
+
+/** One submission as a row rather than the wire shape: `replies` reads the address through here. */
+export function findFeedback(feedbackId: string): Promise<Feedback | undefined> {
+  return selectFeedbackById(feedbackId);
 }
 
 /** The whole inbox, newest first. `plugins/staff-guard.ts` is what keeps this staff-only. */

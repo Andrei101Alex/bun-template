@@ -4,6 +4,7 @@ import { Elysia } from "elysia";
 import { authRoutes } from "../../features/auth/routes";
 import { feedbackRoutes } from "../../features/feedback/routes";
 import { healthRoutes } from "../../features/health/routes";
+import { replyRoutes } from "../../features/replies/routes";
 import { errorBody, errorMapping } from "../../plugins/error-mapping";
 import { errorReporting } from "../../plugins/error-reporting";
 import { requestId } from "../../plugins/request-id";
@@ -29,6 +30,7 @@ export function buildApp() {
       .use(healthRoutes)
       .use(authRoutes)
       .use(feedbackRoutes)
+      .use(replyRoutes)
   );
 }
 

@@ -2,12 +2,13 @@ import "./env";
 import { type JobHandler, type Schedule, startOutboxConsumer, startSchedules } from "@repo/jobs";
 import { logger } from "@repo/observability";
 import * as feedback from "../../features/feedback/jobs";
+import * as replies from "../../features/replies/jobs";
 
 /** What a feature's `jobs.ts` may export, both sides optional: a feature declares what it has. */
 type Jobs = { handlers?: Record<string, JobHandler>; schedules?: readonly Schedule[] };
 
 // one entry per feature with a jobs.ts; this is the whole registry
-const features: Record<string, Jobs> = { feedback };
+const features: Record<string, Jobs> = { feedback, replies };
 
 /**
  * Merging silently would let a second feature's entry replace the first, so a kind two features
