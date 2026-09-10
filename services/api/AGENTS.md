@@ -20,12 +20,12 @@ services/api/
       health/    routes.ts
       feedback/  routes.ts  model.ts  service.ts  repository.ts  emails.ts  jobs.ts
     plugins/
-      error-mapping.ts  request-id.ts  staff-guard.ts
+      error-mapping.ts  error-reporting.ts  request-id.ts  request-logging.ts  staff-guard.ts
 packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api entry point, `features/health/`, `features/feedback/` (`routes` `model` `service` `repository`), `plugins/error-mapping.ts`, `@repo/errors`, `@repo/db` with the `feedback` table and the first migration, and the test runner. The rest of this file is the rule those pieces arrive under.
+Built today: the api entry point, `features/health/`, `features/feedback/` (`routes` `model` `service` `repository`), `plugins/` less `rate-limit` and `staff-guard`, `@repo/errors`, `@repo/observability`, `@repo/db` with the `feedback` table and the first migration, and the test runner. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -59,7 +59,7 @@ One row per kind of thing, naming its one legal home. A feature creates a file o
 
 ## Entry points
 
-`entrypoints/api/app.ts` exports `buildApp()`, returning the composed Elysia instance, and `App`, the type Eden Treaty gives the frontends. `buildApp()` mounts, in order, the plugins that run around a request (`request-id`, `request-logging`, `error-mapping`, `error-reporting`), `cors` and `swagger` inline, then one `.use` per feature, and declares the 422 and 500 responses once. `main.ts` parses the process env and calls `.listen`. A test builds the app from `buildApp()`, so nothing here binds a port.
+`entrypoints/api/app.ts` exports `buildApp()`, returning the composed Elysia instance, and `App`, the type Eden Treaty gives the frontends. `buildApp()` mounts, in order, the plugins that run around a request (`request-id`, `request-logging`, `error-reporting`, `error-mapping`, reporting first because the first `onError` hook to answer ends the chain), `cors` and `swagger` inline, then one `.use` per feature, and declares the 422 and 500 responses once. `main.ts` parses the process env and calls `.listen`. A test builds the app from `buildApp()`, so nothing here binds a port.
 
 `entrypoints/jobs/main.ts` imports each feature's `jobs.ts`, merges `handlers` and `schedules`, and calls `startOutboxConsumer(handlers)` and `startSchedules(schedules)` from `@repo/jobs`. A duplicate kind, or a declared kind with no handler, fails at boot.
 
@@ -96,7 +96,7 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 | --- | --- | --- | --- |
 | `@repo/db` | `db`, `withTransaction`, `migrate`, `checkConnection`, every table | `migrateTestDatabase()` | `DATABASE_URL`; a `pglite:` scheme picks PGlite (`pglite://memory`, `pglite://<dir>`), a `postgres:` or `postgresql:` one picks postgres.js, and any other scheme is refused at boot |
 | `@repo/errors` | `DomainError`, `Kind`, the helper per kind, `isDomainError` | none | none |
-| `@repo/observability` | `logger`, `reportError` | the reported-errors handle and its reset | log level |
+| `@repo/observability` | `logger`, `reportError` | `reportedErrors()`, `resetReportedErrors()` | `LOG_LEVEL`: a pino level or `silent` |
 | `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend` |
 | `@repo/auth` | the Better Auth instance, `isStaff(session)` | a staff-session helper | Better Auth secret and URL |
 | `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter` | `pendingMessages(kind?)` | polling constants are code |
@@ -105,7 +105,7 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 
 ## Plugins
 
-`src/plugins/` holds only code that runs around a request: hooks, guards, derived values. One Elysia instance per file, `name` equal to the filename. `request-id` derives a child logger; `request-logging` writes a line per request; `error-mapping` owns the status table, the envelope writer and `errorBody`; `error-reporting` sends faults to `reportError`; `rate-limit` counts per process and sets `Retry-After`; `staff-guard` applies `isStaff`. Health, the auth mount and the docs are features or entry-point wiring, not plugins.
+`src/plugins/` holds only code that runs around a request: hooks, guards, derived values. One Elysia instance per file, `name` equal to the filename. `request-id` derives a child logger; `request-logging` writes a line per request; `error-reporting` sends faults to `reportError`; `error-mapping` owns the status table, the envelope writer and `errorBody`; `rate-limit` counts per process and sets `Retry-After`; `staff-guard` applies `isStaff`. Health, the auth mount and the docs are features or entry-point wiring, not plugins.
 
 ## Import direction
 
@@ -125,9 +125,9 @@ The kind-and-code envelope, `errorBody`, and the mapping of Elysia's `VALIDATION
 
 ## Tests
 
-`X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, the reported-errors handle. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own, and `@repo/db` carries none.
+`X.test.ts` sits beside `X.ts`, in the service and in every package. A route test drives the whole app through Eden Treaty typed with `App`, built from `buildApp()`, and asserts `error.status` and `error.value.code` on a refusal. The database is PGlite in memory running the same `drizzle/` migrations, one instance per test file. Doubles are chosen by env, so the production import path is the one under test and no test reaches for `mock.module`; a test reads what happened through the package's `./testing` subpath: `sentEmails()`, `pendingMessages(kind?)`, `reportedErrors()`. Fixtures go through the owning feature's service, and an old row is reached through a rule's `now` parameter rather than by writing a timestamp. A test may import what its subject may import, plus `bun:test` and any `@repo/*/testing`. Repositories have no tests of their own, and `@repo/db` carries none.
 
-The runner is `bun run test` from the root, which runs each workspace's `bun test --isolate`. A workspace with tests carries a `bunfig.toml` naming `tests/preload.ts` and a committed `.env.test` holding fakes only. The preload awaits `migrateTestDatabase()` and registers the global `beforeEach` that resets the doubles. A bare root `bun test` reads the root `bunfig.toml` instead, so it loads neither and is unsupported.
+The runner is `bun run test` from the root, which runs each workspace's `bun test --isolate`. A workspace with tests carries a `bunfig.toml` naming `tests/preload.ts` and a committed `.env.test` holding fakes only. The preload awaits `migrateTestDatabase()` and registers the global `beforeEach` that resets the doubles: `resetReportedErrors()`, `resetSentEmails()`, truncating `outbox`. A bare root `bun test` reads the root `bunfig.toml` instead, so it loads neither and is unsupported.
 
 ## Vocabulary
 

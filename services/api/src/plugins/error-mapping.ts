@@ -13,7 +13,6 @@ export const errorMapping = new Elysia({ name: "error-mapping" }).onError(
     // already, so returning nothing hands those back to it.
     if (code !== "UNKNOWN" && code !== "INTERNAL_SERVER_ERROR") return;
 
-    console.error(error);
     set.status = 500;
     return { error: "Internal server error", code: "internal" as const };
   },
