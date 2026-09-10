@@ -1,16 +1,12 @@
 import { beforeEach } from "bun:test";
 import { db, outbox } from "@repo/db";
 import { migrateTestDatabase } from "@repo/db/testing";
-import { resetSentEmails } from "@repo/email/testing";
 import { resetReportedErrors } from "@repo/observability/testing";
 
 // `bun test --isolate` gives each file its own process, so this is one in-memory PGlite per file
 await migrateTestDatabase();
 
-// Every vendor double resets here, and the outbox with them: a message one test enqueued is
-// not a message the next one has to account for
 beforeEach(async () => {
   resetReportedErrors();
-  resetSentEmails();
   await db.delete(outbox);
 });

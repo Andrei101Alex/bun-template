@@ -1,4 +1,4 @@
-import { db, feedback } from "@repo/db";
+import { db, feedback, type Transaction } from "@repo/db";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Feedback, SubmitFeedbackInput } from "./model";
 
@@ -10,10 +10,19 @@ const columns = {
   createdAt: feedback.createdAt,
 };
 
-export async function insertFeedback(input: SubmitFeedbackInput): Promise<Feedback> {
-  const [row] = await db.insert(feedback).values(input).returning(columns);
+/** Takes the executor because the row and its acknowledgement message commit together. */
+export async function insertFeedback(
+  tx: Transaction,
+  input: SubmitFeedbackInput,
+): Promise<Feedback> {
+  const [row] = await tx.insert(feedback).values(input).returning(columns);
   // returning() widens to possibly-absent; a one-row insert either returns its row or throws
   return row as Feedback;
+}
+
+export async function selectFeedbackById(id: string): Promise<Feedback | undefined> {
+  const [row] = await db.select(columns).from(feedback).where(eq(feedback.id, id));
+  return row;
 }
 
 export function selectFeedback(): Promise<Feedback[]> {

@@ -26,7 +26,7 @@ packages/
   db/  auth/  email/  jobs/  observability/  errors/
 ```
 
-Built today: the api entry point, `features/health/`, `features/auth/`, `features/feedback/` (`routes` `model` `service` `repository`), `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/db` with the `feedback` and auth tables and their migrations, and the test runner. The rest of this file is the rule those pieces arrive under.
+Built today: the api and jobs entry points, `features/health/`, `features/auth/`, `features/feedback/` (every file but `routes.ts`'s reply routes), `plugins/` less `rate-limit`, `@repo/errors`, `@repo/observability`, `@repo/auth`, `@repo/email`, `@repo/jobs` less a cron runtime behind `startSchedules`, `@repo/db` with the `feedback`, `outbox` and auth tables and their migrations, and the test runner. The rest of this file is the rule those pieces arrive under.
 
 ## Placement table
 
@@ -100,7 +100,7 @@ Each package is one concern with an outside, laid out like `@repo/ui`: `package.
 | `@repo/observability` | `logger`, `reportError` | `reportedErrors()`, `resetReportedErrors()` | `LOG_LEVEL`: a pino level or `silent` |
 | `@repo/email` | `sendEmail`, `EmailMessage`, `verifyWebhookSignature` | `sentEmails()`, `resetSentEmails()` | `EMAIL_PROVIDER`: `memory` or `resend`, anything else refused at boot; `RESEND_API_KEY` and `EMAIL_FROM` required only when it is `resend` |
 | `@repo/auth` | `auth` (the Better Auth instance), `isStaff(session)`, `STAFF_ROLE` | `signUpUser()`, `signUpStaff()` | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` |
-| `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter` | `pendingMessages(kind?)` | polling constants are code |
+| `@repo/jobs` | `defineMessage`, `handle`, `enqueue`, `startOutboxConsumer`, `runOutboxOnce`, `startSchedules`, `replayDeadLetter`, the types `Message`, `JobHandler`, `Schedule` | `pendingMessages(kind?)` | polling constants are code |
 
 `@repo/auth` runs Better Auth's `admin` plugin, whose `role` column is what `isStaff` reads, and its `twoFactor` plugin. Its tables belong to `@repo/db` like every other table: `bun run --filter @repo/auth generate-schema` writes `packages/db/src/schema/auth.ts` through the Better Auth CLI, and that file is generated output, never edited by hand. `@repo/errors` imports nothing. `@repo/db` owns `drizzle.config.ts` and `drizzle/`, and its tables are the only `pgTable`s in the repo; `bun run --filter @repo/db generate` writes a migration and `migrate` applies one, so nothing migrates at boot. A repository types its executor as the exported `Database` or `Transaction`, which name no driver, so one query runs on PGlite and on Postgres alike. `@repo/jobs` holds no message kind and ships a replay script: `bun run --filter @repo/jobs replay 42`.
 
@@ -160,6 +160,7 @@ The runner is `bun run test` from the root, which runs each workspace's `bun tes
 - **Kind.** The string naming a message type (`feedback.acknowledge`). Also the closed set a `DomainError` picks its status from; the context says which.
 - **Lease.** The 60-second claim a consumer takes on a message. A crashed consumer's row is retaken when the lease lapses.
 - **Dead letter.** A message flagged `dead_lettered_at`, skipped by the claim, replayable by id.
+- **At-least-once.** The delivery guarantee: the row outlives its handler, so a crash between sending and deleting sends twice. There are no idempotency keys; a handler that must not repeat carries its own guard.
 - **Handler.** An Elysia route function, or an outbox message handler. A rule is not a handler.
 - **Jobs.** The package, the entry point and the feature file; never the outbox itself.
 

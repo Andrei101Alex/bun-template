@@ -1,0 +1,3 @@
+[test]
+# every test file gets the migrated PGlite and an empty outbox before its first test
+preload = ["./tests/preload.ts"]

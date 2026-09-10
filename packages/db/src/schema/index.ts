@@ -3,3 +3,4 @@
 // CLI's output: regenerate it with `bun run --filter @repo/auth generate-schema`, never by hand.
 export * from "./auth";
 export * from "./feedback";
+export * from "./outbox";

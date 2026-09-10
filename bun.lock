@@ -104,6 +104,21 @@
         "@types/bun": "^1.4.0",
       },
     },
+    "packages/jobs": {
+      "name": "@repo/jobs",
+      "version": "0.0.0",
+      "dependencies": {
+        "@repo/db": "workspace:*",
+        "@repo/errors": "workspace:*",
+        "@repo/observability": "workspace:*",
+        "@sinclair/typebox": "^0.34.49",
+        "drizzle-orm": "^0.44.0",
+      },
+      "devDependencies": {
+        "@repo/typescript-config": "workspace:*",
+        "@types/bun": "^1.4.0",
+      },
+    },
     "packages/observability": {
       "name": "@repo/observability",
       "version": "0.0.0",
@@ -157,7 +172,9 @@
         "@elysiajs/swagger": "^1.3.1",
         "@repo/auth": "workspace:*",
         "@repo/db": "workspace:*",
+        "@repo/email": "workspace:*",
         "@repo/errors": "workspace:*",
+        "@repo/jobs": "workspace:*",
         "@repo/observability": "workspace:*",
         "@sinclair/typebox": "^0.34.49",
         "drizzle-orm": "^0.44.0",
@@ -560,6 +577,8 @@
     "@repo/email": ["@repo/email@workspace:packages/email"],
 
     "@repo/errors": ["@repo/errors@workspace:packages/errors"],
+
+    "@repo/jobs": ["@repo/jobs@workspace:packages/jobs"],
 
     "@repo/observability": ["@repo/observability@workspace:packages/observability"],
 
